@@ -1,0 +1,92 @@
+---
+title: "blog 3"
+author: "Yuchen Chen"
+date: "2026-09-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+Question and Motivation
+It is generally accepted that education can improve the personal development in the United States labor market. This blog would use IPUMS Current Population Survey microdata to research how unemployment rate and weekly wages change with the change of education levels. The research question is very simple: are people with a higher education level have a more stable employment rate, and have a higher weekly wage? This topic is really meaningful in real life economy, since education is an important and large component of spending for most people. If more education means a lower unemployment rate and a higher income, then it is not hard to understand why many people are willing to spend a lot of money and time to get a higher degree. In this analysis, I would use the nationally representative survey data to depict the overall pattern of the U.S. overall population, not only the sample of the survey.
+
+Data and Methods
+The data I use comes from IPUMS CPS, which is a monthly household survey which conducted together by the U.S. Census Bureau and the Bureau of Labor Statistics. CPS collects information about employment, income and population features. One key aspect of CPS data is the sampling weight WTFINL. The weight is used for revising the sampling structure, and make sure the statistics that we calculate represent the total US population.
+
+There are three key variables that we use: EDUC records the education level of the sample, EMPSTAT distinguishes the employment condition and is used for calculating the unemployment rate, ASECWTH measures the weekly wages. All summary statistics are calculated by population weights. I totally drew three visible graphs to analyze the pattern of the labor market. The first graph shows the weighted population distribution among different education levels, which shows the structure of the population. The second graph shows the unemployment rate among different education levels, and the third graph shows the average weekly wage of different education levels.
+
+Results
+The first graph shows the population distribution situation of different education levels, established the structure base of population of this research, which clearly indicates the distribution of education levels of the US population.
+
+The second graph shows the unemployment rates of all the education levels, the trend is not simply consistent decreasing: the population of grade 9 & 10 have the highest unemployment rate, while the group with a lower education level actually have a lower unemployment rate. While the education level exceeds high school, the education level decreases again.
+
+The third graph indicates the average weekly income. Almost all education levels have the same level of income. With the increase of education level, the income does not have a significant increase. No matter the education level, the wage level is approximately stable.
+
+Conclusion
+
+This analysis is only descriptive, and cannot prove the causal relationship. Personal abilities, working experience, family background and other complex factors would also influence the employment outcome and the wage level.
+
+Combining the results of the three graphs, the relationship between education and labor market is much more complex than simple linear equations. The unemployment rate has the highest point at the education level of grade nine and ten, not at the lowest education level. Also, the average weekly wage would not increase with the increase of education level, and keep stable among all the education levels.
+
+The result shows that the labor market returns brought by education is not necessarily linear. It is true that people have a lower unemployment rate after finishing their high school education, but in this data a higher level of education does not bring a higher weekly wage. Although there exists disturbance variables, this national CPS data still indicates the unemployment risks and weekly wage changes pattern of different education level in U.S..
+
+```{r}
+library(ipumsr)
+ddi<-read_ipums_ddi("cps_00001.xml")
+data<-read_ipums_micro(ddi)
+library(tidyverse)
+filter(data,EMPSTAT==10)
+employed_data<-filter(data,EMPSTAT%in% c(10,21,22))
+group_by(employed_data,EDUC)
+education<-group_by(employed_data,EDUC)
+educ_stats<-summarise(education,count=sum(WTFINL,na.rm = TRUE))%>%ungroup()
+educ_stats<-filter(educ_stats, count>0)
+educ_result<-mutate(educ_stats,pro=count/sum(count))
+library(haven)
+educ_result<-educ_result %>% mutate(EDUC_label=as_factor(EDUC))
+View(educ_result)
+```
+```{r}
+ggplot(educ_result,aes(x=EDUC_label,y=pro))+
+  geom_col()+
+  theme(axis.text.x=element_text(angle = 45, hjust = 1))+
+  labs(title = "Education Composition of US Labormarket",
+       x="Education Level",
+       y="Proportion")
+```
+```{r}
+unemp_data<-group_by(data,EDUC)
+unemp_data<-summarise(unemp_data,labor_total=sum(WTFINL[EMPSTAT %in% c(10,12,22)],na.rm = TRUE),
+unemp_total=sum(WTFINL[EMPSTAT==22],na.rm = TRUE))%>%ungroup()
+unemp_data<-mutate(unemp_data,unemp_rate=unemp_total/labor_total)
+unemp_data<-filter(unemp_data,labor_total>0)
+unemp_data<-mutate(unemp_data,EDUC_label=as_factor(EDUC))
+```
+```{r}
+ggplot(unemp_data,aes(x=EDUC_label,y=unemp_rate))+
+  geom_col()+
+  theme(axis.text.x=element_text(angle = 45, hjust = 1))+
+  labs(title="Unemployment rate by Education Level",
+       x="Education Level",
+       y="Unemployment Rate")
+```
+```{r}
+wage_data<-group_by(data,EDUC)
+wage_data<-summarise(wage_data,average_wage=mean(ASECWTH,na.rm = TRUE))%>%ungroup()
+wage_data<-filter(wage_data,!is.na(average_wage))
+wage_data<-mutate(wage_data,EDUC_label=as_factor(EDUC))
+```
+```{r}
+ggplot(wage_data,aes(x=EDUC_label,y=average_wage))+
+  geom_col()+
+  theme(axis.text.x=element_text(angle = 45, hjust = 1))+
+  labs(title="Average Weekly Wages by Education Level",
+       x="Education Level",
+       y="Average Weekly Wages")
+```
+
+
+
